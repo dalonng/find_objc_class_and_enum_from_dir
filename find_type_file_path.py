@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from typing import Union
-import os
+import re
 import sys
 import subprocess
 
@@ -14,7 +14,7 @@ def find_type_file_path(dir_path: str, type_str: str) -> Union[str, None]:
 
   files = list(filter(lambda line: '+' not in str(line), lines))
   if len(files) != 0:
-    print(str(files[0], 'utf-8'))
+    return str(files[0], 'utf-8')
     exit(0)
 
   # 使用 rg 查找
@@ -22,11 +22,20 @@ def find_type_file_path(dir_path: str, type_str: str) -> Union[str, None]:
   output = subprocess.run(command, capture_output=True).stdout
   lines = output.splitlines()
 
+  cls_pattern = r'@interface\s+(?P<class_name>\w+)\s*:\s*(?P<superclass>\w+)\s*(<.*?>)?'
+
   for line in lines:
-    if '@interface' in str(line):
-      file_path = str(line, 'utf-8').split(':')[0]
-      break
-  print(file_path)
+    # content = str(line).split('.h:')[1]
+    match = re.search(cls_pattern, str(line))
+    if match:
+      class_name = match.group('class_name')
+      if class_name and class_name == type_str:
+        file_path = str(line, 'utf-8').split(':')[0]
+        break
+    # if  '@interface' in content and ':' in content:
+    #   file_path = str(line, 'utf-8').split(':')[0]
+    #   break
+  return file_path
 
 
 if __name__ == '__main__':

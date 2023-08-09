@@ -1,17 +1,14 @@
+from typing import Union
+
 class ObjcProperty:
     """
     objc 类文本解析的属性对象
     """
 
-    def __init__(self, name: str, attributes: str):
-        words = name.rsplit(maxsplit=1)
-        if len(words) > 1:
-            self._name = words[1].strip() 
-            self._type = words[0].strip()
-        else:
-            self._name = words[0].strip
-            self._type = ''
-        self._attributes = attributes
+    def __init__(self, name: str, property_type: str, declaration_type: str):
+        self._name = name.strip()
+        self._type = property_type.strip()
+        self._declaration_type = declaration_type
         self.array_type = ''
 
     @property
@@ -21,10 +18,14 @@ class ObjcProperty:
     @property
     def type(self) -> str:
         return self._type
+    
+    @property
+    def declaration_type(self) -> str:
+        return self._declaration_type
 
     @property
     def is_assign(self) -> bool:
-        return 'assign' in self._attributes
+        return 'assign' in self._declaration_type
 
     @property
     def is_enum(self) -> bool:
@@ -46,6 +47,34 @@ class ObjcProperty:
     def is_nsdictionary_in_nsarray(self) -> bool:
         return self.is_nsarray and self.is_nsdictionary
 
+    @property
+    def is_nsstring_in_nsarray(self) -> bool:
+        return self.is_nsarray and 'NSString' in self._type
+
+    @property
+    def is_nsnumber_in_nsarray(self) -> bool:
+        return self.is_nsarray and 'NSNumber' in self._type
+    
+    @property
+    def is_ksproperty(self) -> bool:
+        return 'KS' in self._type
+    
+    @property
+    def swift_type(self) -> str:
+        if self._type == 'float':
+            return 'Float'
+        if self._type.startswith('NSString'):
+            return 'String'
+        if self.is_nsnumber:
+            return 'NSNumber'
+        if self.is_nsarray and 'NSString' in self._type:
+            return '[String]'
+        if self.is_nsdictionary:
+            return 'NSDictionary'
+        if self.is_nsdictionary_in_nsarray:
+            return 'NSDictionary'
+        return self.type
+
     def __str__(self):
         return f'<ObjcProperty: name: {self.name}, type: {self.type}, attributes: {self._attributes}>'
 
@@ -53,7 +82,7 @@ class ObjcProperty:
         return {
             'name': self.name,
             'type': self.type,
-            'attributes': self._attributes
+            'declaration_type': self._declaration_type
         }
     
     
@@ -98,6 +127,11 @@ class ObjcClass:
             'properties': [p.to_json() for p in self.properties]
         }
     
+    def property_by_name(self, name: str) -> Union[ObjcProperty, None]:
+        for p in self.properties:
+            if p.name == name:
+                return p
+        return None
 
 class ObjcEnum:
     def __init__(self, file_path: str, name: str, enum_type: str, enums: [str]):
